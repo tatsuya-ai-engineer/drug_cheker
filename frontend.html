@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>薬剤安全チェック</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: 'Hiragino Sans', 'Meiryo', sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .header {
+            background-color: #fff;
+            color: #333;
+            padding: 1rem 0;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid #eee;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .header h1 {
+            font-size: 1.5rem;
+            text-align: center;
+            margin: 0;
+        }
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+            border: none;
+        }
+        .result-card {
+            border-left: 5px solid #3498db;
+        }
+        .warning-card {
+            border-left: 5px solid #e74c3c;
+        }
+        .chat-container {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 1rem;
+            background-color: #f8f9fa;
+        }
+        .chat-input {
+            border-radius: 30px;
+        }
+        .chat-bubble {
+            border-radius: 18px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            max-width: 80%;
+        }
+        .user-bubble {
+            background-color: #3498db;
+            color: white;
+            margin-left: auto;
+        }
+        .bot-bubble {
+            background-color: #ecf0f1;
+            color: #2c3e50;
+        }
+        .error-bubble {
+            background-color: #fee;
+        }
+        .chat-welcome {
+            text-align: center;
+            margin: 1rem 0;
+            padding: 1rem;
+            background-color: #f0f8ff;
+            border-radius: 10px;
+            border: 1px dashed #3498db;
+        }
+        .chat-loading {
+            opacity: 0.7;
+        }
+        .url-input-container {
+            margin-bottom: 0.75rem;
+        }
+        .loading {
+            display: none;
+            margin: 2rem auto;
+            text-align: center;
+        }
+        .status-badge {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 30px;
+        }
+        .badge-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+        .badge-warning {
+            background-color: #f39c12;
+            color: white;
+        }
+        .badge-success {
+            background-color: #2ecc71;
+            color: white;
+        }
+        #markdown-result {
+            padding: 1rem;
+        }
+        .invalid-input {
+            border-color: #e74c3c;
+        }
+        .invalid-feedback {
+            display: block;
+            color: #e74c3c;
+        }
+        .alert {
+            border-radius: 10px;
+        }
+        /* アニメーション */
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .loading-animation {
+            animation: pulse 1.5s infinite;
+        }
+        
+        /* ボタンスタイルの強化 */
+        .btn-primary {
+            background-color: #4caf50;
+            border-color: #4caf50;
+            transition: all 0.3s;
+            border-radius: 30px;
+        }
+        .btn-primary:hover, .btn-primary:focus {
+            background-color: #43a047;
+            border-color: #43a047;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .btn-primary:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        /* 薬剤詳細情報のスタイル */
+        .drug-details {
+            margin-top: 2rem;
+            border-top: 1px solid #dee2e6;
+            padding-top: 1rem;
+        }
+        .drug-details h3 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: #2c3e50;
+        }
+        .drug-details .card-header {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .drug-details .card-header:hover {
+            background-color: #f8f9fa;
+        }
+        .drug-details .card-header i {
+            transition: transform 0.3s;
+        }
+        .drug-details .card-header .bi-chevron-up {
+            transform: rotate(180deg);
+        }
+        .drug-content {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .drug-content h2 {
+            font-size: 1.2rem;
+            margin-top: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #eee;
+        }
+        .drug-content ul {
+            padding-left: 1.5rem;
+        }
+        
+        /* プログレスステータス表示用のスタイル */
+        .progress-container {
+            margin-top: 1rem;
+        }
+        .status-step {
+            padding: 0.5rem 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+        }
+        .step-pending {
+            background-color: #f8f9fa;
+            border-left: 3px solid #dee2e6;
+            opacity: 0.7;
+        }
+        .step-active {
+            background-color: #e8f4fd;
+            border-left: 3px solid #3498db;
+            position: relative;
+        }
+        .step-active::after {
+            content: '';
+            position: absolute;
+            right: 10px;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #3498db;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+        }
+        .step-complete {
+            background-color: #e6f7ef;
+            border-left: 3px solid #2ecc71;
+        }
+        .step-error {
+            background-color: #feeceb;
+            border-left: 3px solid #e74c3c;
+        }
+        .step-icon {
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .extraction-result {
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            display: none;
+        }
+        .doc-status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            padding: 0.3rem 0.5rem;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+        .doc-status-icon {
+            margin-right: 8px;
+        }
+        .doc-name {
+            font-weight: 500;
+            flex-grow: 1;
+        }
+        
+        /* 薬剤の患者適合性評価カードのスタイル */
+        .suitability-card {
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+        }
+        .suitability-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .suitability-card .card-title {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+        .verdict-badge {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 30px;
+            margin-left: 0.5rem;
+        }
+        .reasons-list {
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            padding-left: 1.5rem;
+        }
+        .card-success {
+            border-left: 4px solid #2ecc71;
+            background-color: #f0fff4;
+        }
+        .card-warning {
+            border-left: 4px solid #f39c12;
+            background-color: #fff8e1;
+        }
+        .card-danger {
+            border-left: 4px solid #e74c3c;
+            background-color: #fff5f5;
+        }
+        .card-neutral {
+            border-left: 4px solid #95a5a6;
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container d-flex justify-content-center align-items-center">
+            <h1><i class="bi bi-capsule me-2"></i> 薬剤安全チェック</h1>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 薬剤併用禁忌チェックシステムコンテンツ -->
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5><i class="bi bi-file-earmark-medical"></i> 薬剤安全チェック</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="pdf-form">
+                            <div id="url-inputs">
+                                <div class="url-input-container d-flex">
+                                    <input type="url" class="form-control me-2 pdf-url" placeholder="添付文書PDFのURL" required>
+                                    <button type="button" class="btn btn-outline-danger remove-url"><i class="bi bi-trash"></i></button>
+                                </div>
+                            </div>
+                            <button type="button" id="add-url" class="btn btn-outline-secondary mt-2">
+                                <i class="bi bi-plus-circle"></i> URLを追加
+                            </button>
+                            
+                            <div class="mt-3">
+                                <label for="patient-info" class="form-label">患者情報（任意）</label>
+                                <div class="mb-2">
+                                    <button type="button" id="use-template" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-file-earmark-text"></i> 患者情報テンプレートを使用
+                                    </button>
+                                </div>
+                                <textarea id="patient-info" class="form-control" rows="5" placeholder="年齢、性別、疾患名、処方中の薬剤、用法・用量など"></textarea>
+                                <div class="form-text text-muted">
+                                    <small>正確な分析のために、できるだけ詳細な患者情報を入力してください。</small>
+                                </div>
+                            </div>
+                            
+                            <!-- 患者情報入力補助モーダル -->
+                            <div class="modal fade" id="patientInfoModal" tabindex="-1" aria-labelledby="patientInfoModalLabel" aria-hidden="true">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="patientInfoModalLabel">患者情報入力</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <form id="patient-form">
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <label for="patient-age" class="form-label">年齢</label>
+                                                        <input type="number" class="form-control" id="patient-age" min="0" max="120">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label for="patient-gender" class="form-label">性別</label>
+                                                        <select class="form-select" id="patient-gender">
+                                                            <option value="">選択してください</option>
+                                                            <option value="男性">男性</option>
+                                                            <option value="女性">女性</option>
+                                                            <option value="その他">その他</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="patient-conditions" class="form-label">疾患</label>
+                                                    <textarea class="form-control" id="patient-conditions" rows="2" placeholder="うつ病、高血圧、糖尿病など"></textarea>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <label for="patient-allergies" class="form-label">アレルギー</label>
+                                                    <textarea class="form-control" id="patient-allergies" rows="2" placeholder="薬剤アレルギー、食物アレルギーなど"></textarea>
+                                                </div>
+
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <label for="patient-renal" class="form-label">腎機能</label>
+                                                        <select class="form-select" id="patient-renal">
+                                                            <option value="">選択してください</option>
+                                                            <option value="正常">正常</option>
+                                                            <option value="軽度低下">軽度低下</option>
+                                                            <option value="中等度低下">中等度低下</option>
+                                                            <option value="重度低下">重度低下</option>
+                                                            <option value="透析中">透析中</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label for="patient-hepatic" class="form-label">肝機能</label>
+                                                        <select class="form-select" id="patient-hepatic">
+                                                            <option value="">選択してください</option>
+                                                            <option value="正常">正常</option>
+                                                            <option value="軽度低下">軽度低下</option>
+                                                            <option value="中等度低下">中等度低下</option>
+                                                            <option value="重度低下">重度低下</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label class="form-label">現在服用中の薬剤</label>
+                                                    <div id="current-medications">
+                                                        <div class="row mb-2 medication-row">
+                                                            <div class="col-md-4">
+                                                                <input type="text" class="form-control medication-name" placeholder="薬剤名">
+                                                            </div>
+                                                            <div class="col-md-3">
+                                                                <input type="text" class="form-control medication-dose" placeholder="用量">
+                                                            </div>
+                                                            <div class="col-md-4">
+                                                                <input type="text" class="form-control medication-schedule" placeholder="服用スケジュール">
+                                                            </div>
+                                                            <div class="col-md-1">
+                                                                <button type="button" class="btn btn-sm btn-outline-danger remove-medication">
+                                                                    <i class="bi bi-trash"></i>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <button type="button" id="add-medication" class="btn btn-sm btn-outline-primary mt-2">
+                                                        <i class="bi bi-plus-circle"></i> 薬剤を追加
+                                                    </button>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="patient-notes" class="form-label">特記事項</label>
+                                                    <textarea class="form-control" id="patient-notes" rows="2" placeholder="アレルギー、腎機能・肝機能の状態、生活習慣など"></textarea>
+                                                </div>
+                                            </form>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                                            <button type="button" class="btn btn-primary" id="apply-patient-info">適用</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- サンプル患者テンプレート選択モーダル -->
+                            <div class="modal fade" id="templateModal" tabindex="-1" aria-labelledby="templateModalLabel" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="templateModalLabel">患者情報テンプレート</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="list-group">
+                                                <button type="button" class="list-group-item list-group-item-action" data-template="template1">
+                                                    <strong>ケース1: うつ病と前立腺肥大症の患者</strong><br>
+                                                    <small>50歳男性、うつ病と前立腺肥大症の治療中</small>
+                                                </button>
+                                                <button type="button" class="list-group-item list-group-item-action" data-template="template2">
+                                                    <strong>ケース2: 高血圧と糖尿病の患者</strong><br>
+                                                    <small>65歳女性、高血圧と2型糖尿病の治療中</small>
+                                                </button>
+                                                <button type="button" class="list-group-item list-group-item-action" data-template="template3">
+                                                    <strong>ケース3: 関節リウマチの患者</strong><br>
+                                                    <small>45歳女性、関節リウマチと胃潰瘍の治療中</small>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary mt-3" style="position: relative; z-index: 10;">
+                                <i class="bi bi-search"></i> 併用禁忌をチェック
+                            </button>
+                            
+                            <button type="button" id="alternative-submit" class="btn btn-success mt-3 ms-2" style="position: relative; z-index: 10;">
+                                <i class="bi bi-search"></i> 代替チェックボタン
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                
+                <div class="loading">
+                    <div class="spinner-border text-primary loading-animation" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3 loading-animation">添付文書を解析中です...</p>
+                    <p class="small text-muted mt-2">処理には数十秒かかる場合があります</p>
+                    
+                    <!-- リアルタイム進行状況表示 -->
+                    <div class="progress-container">
+                        <div id="progress-steps">
+                            <div class="status-step step-pending" id="step-download">
+                                <span class="step-icon"><i class="bi bi-cloud-download"></i></span>
+                                <span class="step-text">PDFのダウンロード</span>
+                            </div>
+                            <div class="status-step step-pending" id="step-extraction">
+                                <span class="step-icon"><i class="bi bi-file-text"></i></span>
+                                <span class="step-text">テキスト抽出</span>
+                            </div>
+                            <div class="status-step step-pending" id="step-analysis">
+                                <span class="step-icon"><i class="bi bi-braces"></i></span>
+                                <span class="step-text">情報構造化</span>
+                            </div>
+                            <div class="status-step step-pending" id="step-interaction">
+                                <span class="step-icon"><i class="bi bi-diagram-3"></i></span>
+                                <span class="step-text">相互作用分析</span>
+                            </div>
+                        </div>
+                        
+                        <!-- 文書処理ステータス -->
+                        <div id="document-statuses" class="mt-3" style="display: none;">
+                            <p class="mb-2 fw-bold"><i class="bi bi-file-earmark-medical"></i> 文書処理状況:</p>
+                            <div id="doc-status-list">
+                                <!-- ここに文書の処理状況が追加されます -->
+                            </div>
+                        </div>
+                        
+                        <!-- 抽出結果のプレビュー -->
+                        <div id="extraction-preview" class="extraction-result mt-3">
+                            <!-- ここに抽出結果のプレビューが表示されます -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-6">
+                <div id="result-section" style="display: none;">
+                    <div class="card mb-3 warning-card">
+                        <div class="card-header">
+                            <h5><i class="bi bi-exclamation-triangle"></i> 分析結果</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="conclusion" class="alert alert-primary">
+                                <!-- 結論がここに表示されます -->
+                            </div>
+                            
+                            <div id="status-badges">
+                                <!-- ステータスバッジがここに表示されます -->
+                            </div>
+                            
+                            <!-- 薬剤の患者適合性評価 -->
+                            <div id="suitability-section" class="mt-4" style="display: none;">
+                                <h5 class="mb-3"><i class="bi bi-person-check"></i> 患者への投与適合性評価</h5>
+                                <div id="suitability-cards" class="row">
+                                    <!-- 薬剤ごとの適合性評価カードがここに表示されます -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card result-card">
+                        <div class="card-header">
+                            <h5><i class="bi bi-clipboard-data"></i> 詳細分析</h5>
+                        </div>
+                        <div id="markdown-result" class="card-body">
+                            <!-- マークダウン結果がここに表示されます -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="chat-section" style="display: none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="bi bi-chat-dots"></i> 質問</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chat-container" id="chat-messages">
+                                <!-- チャットメッセージがここに表示されます -->
+                            </div>
+                            <div class="mt-3">
+                                <form id="chat-form" class="d-flex">
+                                    <input type="text" id="chat-input" class="form-control chat-input me-2" placeholder="質問を入力..." required>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-send"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- マークダウン変換ライブラリ -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        let currentConversationId = '';
+        
+        // APIエンドポイントの設定
+        const API_BASE_URL = window.location.hostname === 'localhost' 
+            ? 'http://localhost:10000'
+            : 'https://your-render-app-name.onrender.com';
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // ページロード時にモーダルが開いていた場合は閉じる
+            const openModals = document.querySelectorAll('.modal.show');
+            openModals.forEach(modal => {
+                const modalInstance = bootstrap.Modal.getInstance(modal);
+                if (modalInstance) {
+                    modalInstance.hide();
+                }
+            });
+            
+            // URLフィールドの追加ボタン
+            document.getElementById('add-url').addEventListener('click', function() {
+                const urlInputContainer = document.createElement('div');
+                urlInputContainer.className = 'url-input-container d-flex';
+                urlInputContainer.innerHTML = `
+                    <input type="url" class="form-control me-2 pdf-url" placeholder="添付文書PDFのURL" required>
+                    <button type="button" class="btn btn-outline-danger remove-url"><i class="bi bi-trash"></i></button>
+                `;
+                document.getElementById('url-inputs').appendChild(urlInputContainer);
+                
+                // 削除ボタンに機能を追加
+                urlInputContainer.querySelector('.remove-url').addEventListener('click', function() {
+                    urlInputContainer.remove();
+                });
+            });
+            
+            // URL削除ボタンの初期化
+            document.querySelectorAll('.remove-url').forEach(button => {
+                button.addEventListener('click', function() {
+                    this.closest('.url-input-container').remove();
+                });
+            });
+            
+            // 患者情報テンプレートボタン
+            document.getElementById('use-template').addEventListener('click', function() {
+                const templateModal = new bootstrap.Modal(document.getElementById('templateModal'));
+                templateModal.show();
+            });
+            
+            // テンプレート選択イベント
+            document.querySelectorAll('[data-template]').forEach(button => {
+                button.addEventListener('click', function() {
+                    const templateId = this.getAttribute('data-template');
+                    applyTemplate(templateId);
+                    bootstrap.Modal.getInstance(document.getElementById('templateModal')).hide();
+                });
+            });
+            
+            // 薬剤追加ボタン
+            document.getElementById('add-medication').addEventListener('click', function() {
+                addMedicationRow();
+            });
+            
+            // 初期の薬剤行の削除ボタンにイベントをバインド
+            document.querySelector('.remove-medication').addEventListener('click', function() {
+                if (document.querySelectorAll('.medication-row').length > 1) {
+                    this.closest('.medication-row').remove();
+                }
+            });
+            
+            // 患者情報適用ボタン
+            document.getElementById('apply-patient-info').addEventListener('click', function() {
+                generatePatientInfo();
+                bootstrap.Modal.getInstance(document.getElementById('patientInfoModal')).hide();
+            });
+            
+            // 代替送信ボタンのイベント
+            document.getElementById('alternative-submit').addEventListener('click', function() {
+                console.log('代替ボタンがクリックされました');
+                // フォームを手動で送信
+                document.getElementById('pdf-form').dispatchEvent(new Event('submit'));
+            });
+            
+            // フォーム送信イベント
+            document.getElementById('pdf-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                console.log('フォーム送信イベントが発火しました');
+                
+                // 入力URLの取得
+                const urlInputs = document.querySelectorAll('.pdf-url');
+                const urls = Array.from(urlInputs).map(input => input.value).filter(url => url.trim() !== '');
+                
+                if (urls.length === 0) {
+                    alert('少なくとも1つの添付文書URLを入力してください');
+                    return;
+                }
+                
+                // URLのバリデーション
+                let hasValidationError = false;
+                for (const url of urls) {
+                    try {
+                        new URL(url);
+                    } catch (e) {
+                        alert(`無効なURLが含まれています: ${url}`);
+                        hasValidationError = true;
+                        return;
+                    }
+                }
+                
+                if (hasValidationError) return;
+                
+                // PDFの確認（任意）
+                if (!urls.some(url => url.toLowerCase().endsWith('.pdf'))) {
+                    if (!confirm('PDFファイルのURLが含まれていないようです。このままプロセスを続行しますか？')) {
+                        return;
+                    }
+                }
+                
+                // 患者情報の取得
+                const patientInfo = document.getElementById('patient-info').value;
+                
+                // 送信データの作成
+                const data = {
+                    urls: urls,
+                    patient_info: patientInfo
+                };
+                
+                // ローディング表示
+                document.querySelector('.loading').style.display = 'block';
+                
+                // 結果セクションをクリア
+                document.getElementById('result-section').style.display = 'none';
+                document.getElementById('chat-section').style.display = 'none';
+                
+                // ステップをリセット
+                resetProgressSteps();
+                updateProgressStep('step-download', 'active');
+                document.getElementById('document-statuses').style.display = 'block';
+                
+                // 文書ステータスリストをクリア
+                const docStatusList = document.getElementById('doc-status-list');
+                docStatusList.innerHTML = '';
+                
+                // 各URLに対してステータス表示を追加
+                urls.forEach((url, index) => {
+                    const docStatus = document.createElement('div');
+                    docStatus.className = 'doc-status';
+                    docStatus.id = `doc-status-${index}`;
+                    docStatus.innerHTML = `
+                        <span class="doc-status-icon"><i class="bi bi-hourglass"></i></span>
+                        <span class="doc-name">${getFileNameFromUrl(url)}</span>
+                        <span class="doc-status-text">待機中</span>
+                    `;
+                    docStatusList.appendChild(docStatus);
+                });
+                
+                // API呼び出し
+                console.log('APIリクエストを送信します', data);
+                
+                // 処理ステップをシミュレート
+                simulateProcessingSteps(data, urls);
+                
+                analyzePDFs(urls, patientInfo)
+                .then(result => {
+                    // すべてのステップを完了状態に
+                    updateProgressStep('step-interaction', 'complete');
+                    
+                    // ローディング非表示
+                    setTimeout(() => {
+                        document.querySelector('.loading').style.display = 'none';
+                    }, 1000); // 少し遅延させて完了状態を見せる
+                    
+                    // 結果を表示
+                    document.getElementById('result-section').style.display = 'block';
+                    document.getElementById('chat-section').style.display = 'block';
+                    
+                    // 会話IDを保存
+                    currentConversationId = result.conversation_id;
+                    
+                    // 結論の表示
+                    document.getElementById('conclusion').innerText = result.conclusion;
+                    
+                    // ステータスバッジの表示
+                    const statusBadges = document.getElementById('status-badges');
+                    statusBadges.innerHTML = '';
+                    
+                    if (result.details.has_contraindications) {
+                        statusBadges.innerHTML += `<span class="status-badge badge-danger me-2">併用禁忌あり</span>`;
+                    } else {
+                        statusBadges.innerHTML += `<span class="status-badge badge-success me-2">併用禁忌なし</span>`;
+                    }
+                    
+                    if (result.details.has_precautions) {
+                        statusBadges.innerHTML += `<span class="status-badge badge-warning me-2">併用注意あり</span>`;
+                    }
+                    
+                    // 危険度レベルを表示
+                    if (result.details.risk_level) {
+                        const riskClass = 
+                            result.details.risk_level === "高" ? "badge-danger" : 
+                            result.details.risk_level === "中" ? "badge-warning" : "badge-success";
+                        statusBadges.innerHTML += `<span class="status-badge ${riskClass} me-2">危険度: ${result.details.risk_level}</span>`;
+                    }
+                    
+                    // 患者固有の注意事項がある場合はそれを表示するセクションを追加
+                    if (result.details.patient_specific_warnings && 
+                        result.details.patient_specific_warnings !== "患者固有の注意事項はありません") {
+                        const patientWarning = document.createElement('div');
+                        patientWarning.className = 'alert alert-warning mt-3';
+                        patientWarning.innerHTML = `
+                            <h5><i class="bi bi-exclamation-triangle"></i> 患者固有の注意事項</h5>
+                            <p>${marked.parse(result.details.patient_specific_warnings)}</p>
+                        `;
+                        document.getElementById('conclusion').after(patientWarning);
+                    }
+                    
+                    // 薬剤の患者適合性評価を表示
+                    if (result.details.drug_suitability && result.details.drug_suitability.length > 0) {
+                        const suitabilitySection = document.getElementById('suitability-section');
+                        suitabilitySection.style.display = 'block';
+                        
+                        const suitabilityCards = document.getElementById('suitability-cards');
+                        suitabilityCards.innerHTML = '';
+                        
+                        // 適合性評価カードを作成
+                        result.details.drug_suitability.forEach(drug => {
+                            const cardDiv = document.createElement('div');
+                            cardDiv.className = 'col-md-6 col-lg-4';
+                            
+                            // 評価結果に応じたカードスタイル
+                            let cardClass = 'card-neutral';
+                            let verdictClass = 'badge-secondary';
+                            let verdictIcon = 'bi-question-circle';
+                            
+                            switch (drug.verdict) {
+                                case '投与可':
+                                    cardClass = 'card-success';
+                                    verdictClass = 'badge-success';
+                                    verdictIcon = 'bi-check-circle-fill';
+                                    break;
+                                case '投与注意':
+                                    cardClass = 'card-warning';
+                                    verdictClass = 'badge-warning';
+                                    verdictIcon = 'bi-exclamation-triangle-fill';
+                                    break;
+                                case '投与禁忌':
+                                    cardClass = 'card-danger';
+                                    verdictClass = 'badge-danger';
+                                    verdictIcon = 'bi-x-circle-fill';
+                                    break;
+                            }
+                            
+                            // 理由リストの生成
+                            let reasonsHtml = '';
+                            if (drug.reasons && drug.reasons.length > 0) {
+                                reasonsHtml = '<ul class="reasons-list">';
+                                drug.reasons.forEach(reason => {
+                                    reasonsHtml += `<li>${reason}</li>`;
+                                });
+                                reasonsHtml += '</ul>';
+                            }
+                            
+                            // カード内容の作成
+                            cardDiv.innerHTML = `
+                                <div class="suitability-card ${cardClass}">
+                                    <div class="card-title">
+                                        <i class="bi bi-capsule me-2"></i>
+                                        ${drug.name}
+                                        <span class="verdict-badge ${verdictClass}">
+                                            <i class="bi ${verdictIcon} me-1"></i> ${drug.verdict}
+                                        </span>
+                                    </div>
+                                    ${reasonsHtml}
+                                </div>
+                            `;
+                            
+                            suitabilityCards.appendChild(cardDiv);
+                        });
+                    }
+                    
+                    // マークダウン結果の表示
+                    const markdownResult = document.getElementById('markdown-result');
+                    markdownResult.innerHTML = marked.parse(result.details.full_analysis);
+                    
+                    // 薬剤詳細情報がある場合、各文書の詳細結果を表示するためのUIを追加
+                    if (result.details.drug_details && result.details.drug_details.length > 0) {
+                        const drugDetailsDiv = document.createElement('div');
+                        drugDetailsDiv.className = 'drug-details mt-4';
+                        drugDetailsDiv.innerHTML = '<h3>添付文書情報詳細</h3>';
+                        
+                        // 各薬剤の詳細情報を追加
+                        result.details.drug_details.forEach(drug => {
+                            const drugCard = document.createElement('div');
+                            drugCard.className = 'card mb-3';
+                            drugCard.innerHTML = `
+                                <div class="card-header d-flex justify-content-between align-items-center" 
+                                     role="button" data-bs-toggle="collapse" 
+                                     href="#drugDetail${drug.index}" aria-expanded="false" 
+                                     aria-controls="drugDetail${drug.index}">
+                                    <span>
+                                        <i class="bi bi-file-earmark-medical"></i> 
+                                        ${drug.name} (文書 ${drug.index})
+                                    </span>
+                                    <i class="bi bi-chevron-down"></i>
+                                </div>
+                                <div class="collapse" id="drugDetail${drug.index}">
+                                    <div class="card-body">
+                                        <div class="mb-2">
+                                            ${drug.url ? `<small class="text-muted">ソース: ${drug.url}</small>` : ''}
+                                        </div>
+                                        <div class="drug-content">
+                                            ${marked.parse(drug.content)}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            drugDetailsDiv.appendChild(drugCard);
+                        });
+                        
+                        // 詳細UIをマークダウン結果の後に追加
+                        markdownResult.appendChild(drugDetailsDiv);
+                        
+                        // 折りたたみ要素のクリックイベント
+                        const headers = drugDetailsDiv.querySelectorAll('.card-header');
+                        headers.forEach(header => {
+                            header.addEventListener('click', function() {
+                                const icon = this.querySelector('.bi-chevron-down, .bi-chevron-up');
+                                if (icon) {
+                                    icon.classList.toggle('bi-chevron-down');
+                                    icon.classList.toggle('bi-chevron-up');
+                                }
+                            });
+                        });
+                    }
+                    
+                    // チャットセクションの初期表示
+                    const chatMessages = document.getElementById('chat-messages');
+                    chatMessages.innerHTML = `
+                        <div class="chat-welcome">
+                            <p>分析結果に関する質問があれば、お気軽にお尋ねください。</p>
+                        </div>
+                    `;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    
+                    // エラー状態にステップを更新
+                    updateProgressStep('step-interaction', 'error');
+                    showExtractionPreview(`## エラーが発生しました\n\n${error.message}\n\n以下をご確認ください：\n\n- サーバーが正常に起動しているか\n- 入力したURLが正しいか\n- PDFが正しくアクセス可能か`, true);
+                    
+                    // 一定時間後にローディング非表示
+                    setTimeout(() => {
+                        document.querySelector('.loading').style.display = 'none';
+                    }, 1000);
+                    
+                    // エラーメッセージを表示
+                    const resultSection = document.getElementById('result-section');
+                    resultSection.style.display = 'block';
+                    
+                    const conclusion = document.getElementById('conclusion');
+                    conclusion.className = 'alert alert-danger';
+                    conclusion.innerText = `エラーが発生しました: ${error.message}`;
+                    
+                    const statusBadges = document.getElementById('status-badges');
+                    statusBadges.innerHTML = '<span class="status-badge badge-danger me-2">処理失敗</span>';
+                    
+                    const markdownResult = document.getElementById('markdown-result');
+                    markdownResult.innerHTML = `
+                        <div class="alert alert-danger">
+                            <h4>エラー詳細</h4>
+                            <p>${error.message}</p>
+                            <hr>
+                            <p>以下をご確認ください：</p>
+                            <ul>
+                                <li>サーバーが正常に起動しているか (python implementation.py)</li>
+                                <li>入力したURLが正しいか</li>
+                                <li>PDFが正しくアクセス可能か</li>
+                            </ul>
+                        </div>
+                    `;
+                });
+            });
+            
+            // チャットフォーム送信イベント
+            document.getElementById('chat-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const chatInput = document.getElementById('chat-input');
+                const question = chatInput.value.trim();
+                
+                if (!question) return;
+                
+                // 入力欄を無効化
+                chatInput.disabled = true;
+                
+                // チャットメッセージコンテナ
+                const chatMessages = document.getElementById('chat-messages');
+                
+                // ユーザーの質問を表示
+                chatMessages.innerHTML += `
+                    <div class="chat-bubble user-bubble">
+                        ${question}
+                    </div>
+                `;
+                
+                // ローディングアイコンを表示
+                chatMessages.innerHTML += `
+                    <div class="chat-loading chat-bubble bot-bubble">
+                        <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <span>回答を生成中...</span>
+                    </div>
+                `;
+                
+                // チャットコンテナを下にスクロール
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                // 入力フィールドをクリア
+                chatInput.value = '';
+                
+                // APIにリクエスト送信
+                askFollowupQuestion(question, currentConversationId)
+                .then(result => {
+                    // ローディングアイコンを非表示
+                    const loadingElement = document.querySelector('.chat-loading');
+                    if (loadingElement) {
+                        loadingElement.remove();
+                    }
+                    
+                    // 回答の表示
+                    chatMessages.innerHTML += `
+                        <div class="chat-bubble bot-bubble">
+                            ${marked.parse(result.answer)}
+                        </div>
+                    `;
+                    
+                    // チャットコンテナを下にスクロール
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    
+                    // ローディングアイコンを非表示
+                    const loadingElement = document.querySelector('.chat-loading');
+                    if (loadingElement) {
+                        loadingElement.remove();
+                    }
+                    
+                    chatMessages.innerHTML += `
+                        <div class="chat-bubble bot-bubble error-bubble">
+                            <div class="alert alert-danger mb-0">
+                                <h5>エラーが発生しました</h5>
+                                <p>${error.message}</p>
+                                <p>もう一度お試しください。問題が解決しない場合は、サーバーの状態を確認してください。</p>
+                            </div>
+                        </div>
+                    `;
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                    
+                    // 入力欄を再度有効化
+                    chatInput.disabled = false;
+                    chatInput.focus();
+                });
+            });
+        });
+        
+        // 薬剤行を追加する関数
+        function addMedicationRow() {
+            const medicationRow = document.createElement('div');
+            medicationRow.className = 'row mb-2 medication-row';
+            medicationRow.innerHTML = `
+                <div class="col-md-4">
+                    <input type="text" class="form-control medication-name" placeholder="薬剤名">
+                </div>
+                <div class="col-md-3">
+                    <input type="text" class="form-control medication-dose" placeholder="用量">
+                </div>
+                <div class="col-md-4">
+                    <input type="text" class="form-control medication-schedule" placeholder="服用スケジュール">
+                </div>
+                <div class="col-md-1">
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-medication">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `;
+            document.getElementById('current-medications').appendChild(medicationRow);
+            
+            // 削除ボタンにイベントを追加
+            medicationRow.querySelector('.remove-medication').addEventListener('click', function() {
+                if (document.querySelectorAll('.medication-row').length > 1) {
+                    medicationRow.remove();
+                }
+            });
+        }
+        
+        // 患者情報を生成する関数
+        function generatePatientInfo() {
+            const age = document.getElementById('patient-age').value;
+            const gender = document.getElementById('patient-gender').value;
+            const conditions = document.getElementById('patient-conditions').value;
+            const notes = document.getElementById('patient-notes').value;
+            const allergies = document.getElementById('patient-allergies').value;
+            const renalFunction = document.getElementById('patient-renal').value;
+            const hepaticFunction = document.getElementById('patient-hepatic').value;
+            
+            let patientInfoText = '';
+            
+            // 基本情報
+            if (age || gender) {
+                patientInfoText += `【基本情報】\n${age ? age + '歳' : ''}${gender ? gender : ''}\n\n`;
+            }
+            
+            // 疾患情報
+            if (conditions) {
+                patientInfoText += `【疾患】\n${conditions}\n\n`;
+            }
+            
+            // 臓器機能情報
+            const organFunctions = [];
+            if (renalFunction) organFunctions.push(`腎機能：${renalFunction}`);
+            if (hepaticFunction) organFunctions.push(`肝機能：${hepaticFunction}`);
+            
+            if (organFunctions.length > 0) {
+                patientInfoText += `【臓器機能】\n${organFunctions.join('\n')}\n\n`;
+            }
+            
+            // アレルギー情報
+            if (allergies) {
+                patientInfoText += `【アレルギー】\n${allergies}\n\n`;
+            }
+            
+            // 薬剤情報
+            const medicationRows = document.querySelectorAll('.medication-row');
+            if (medicationRows.length > 0) {
+                patientInfoText += `【服用中の薬剤】\n`;
+                medicationRows.forEach((row, index) => {
+                    const name = row.querySelector('.medication-name').value;
+                    const dose = row.querySelector('.medication-dose').value;
+                    const schedule = row.querySelector('.medication-schedule').value;
+                    
+                    if (name) {
+                        patientInfoText += `${index + 1}. ${name}`;
+                        if (dose) patientInfoText += ` ${dose}`;
+                        if (schedule) patientInfoText += `（${schedule}）`;
+                        patientInfoText += '\n';
+                    }
+                });
+                patientInfoText += '\n';
+            }
+            
+            // 特記事項
+            if (notes) {
+                patientInfoText += `【特記事項】\n${notes}\n`;
+            }
+            
+            // テキストエリアに設定
+            document.getElementById('patient-info').value = patientInfoText;
+        }
+        
+        // テンプレートを適用する関数
+        function applyTemplate(templateId) {
+            let patientInfo = '';
+            
+            switch(templateId) {
+                case 'template1':
+                    patientInfo = `【基本情報】
+50歳男性
+
+【疾患】
+うつ病、前立腺肥大症
+
+【臓器機能】
+腎機能：正常
+肝機能：正常
+
+【服用中の薬剤】
+1. エスシタロプラム錠 20mg（1日1回 夕食後）
+2. デュタステリドカプセル 0.5mg（1日1回 朝食後）
+
+【特記事項】
+うつ病：1年前に本社の営業課長に異動後、仕事に順応できず、ストレス、不安感、過食が3ヶ月継続。上司のすすめで心療内科を受診。副作用は現れていないが、十分な効果が認められていない。
+前立腺肥大症：排尿障害を伴う前立腺肥大症で内服中。`;
+                    break;
+                case 'template2':
+                    patientInfo = `【基本情報】
+65歳女性
+
+【疾患】
+高血圧、2型糖尿病
+
+【臓器機能】
+腎機能：軽度低下（eGFR 52 ml/min/1.73m2）
+肝機能：正常
+
+【アレルギー】
+ペニシリン系抗生物質
+
+【服用中の薬剤】
+1. アムロジピン 5mg（1日1回 朝食後）
+2. メトホルミン 500mg（1日2回 朝夕食後）
+3. グリメピリド 1mg（1日1回 朝食前）
+
+【特記事項】
+最近めまいの訴えあり`;
+                    break;
+                case 'template3':
+                    patientInfo = `【基本情報】
+45歳女性
+
+【疾患】
+関節リウマチ、胃潰瘍
+
+【臓器機能】
+腎機能：正常
+肝機能：軽度低下（AST 42 U/L, ALT 56 U/L）
+
+【アレルギー】
+NSAIDs（アスピリン、イブプロフェン）で蕁麻疹
+
+【服用中の薬剤】
+1. メトトレキサート 8mg（週1回）
+2. プレドニゾロン 5mg（1日1回 朝食後）
+3. ランソプラゾール 15mg（1日1回 朝食後）
+
+【特記事項】
+NSAIDs服用歴あり（胃潰瘍のため中止）
+疼痛コントロール不十分`;
+                    break;
+            }
+            
+            document.getElementById('patient-info').value = patientInfo;
+        }
+        
+        // ユーティリティ関数
+        function getFileNameFromUrl(url) {
+            try {
+                const urlObj = new URL(url);
+                const pathname = urlObj.pathname;
+                // パスの最後の部分を取得（ファイル名と想定）
+                const parts = pathname.split('/');
+                let fileName = parts[parts.length - 1];
+                
+                // ファイル名が長すぎる場合は省略
+                if (fileName.length > 30) {
+                    fileName = fileName.substring(0, 27) + '...';
+                }
+                
+                return fileName || 'PDF文書';
+            } catch (e) {
+                return 'PDF文書';
+            }
+        }
+        
+        // プログレスステップを更新する関数
+        function updateProgressStep(stepId, status) {
+            const step = document.getElementById(stepId);
+            
+            // 古いステータスクラスを削除
+            step.classList.remove('step-pending', 'step-active', 'step-complete', 'step-error');
+            
+            // 新しいステータスクラスを追加
+            step.classList.add(`step-${status}`);
+            
+            // アイコンを更新
+            const iconSpan = step.querySelector('.step-icon');
+            let iconClass = '';
+            switch (status) {
+                case 'active':
+                    iconClass = 'bi-arrow-repeat';
+                    break;
+                case 'complete':
+                    iconClass = 'bi-check-circle-fill';
+                    break;
+                case 'error':
+                    iconClass = 'bi-x-circle-fill';
+                    break;
+                default:
+                    iconClass = step.querySelector('.step-icon i').className.split('bi-')[1];
+            }
+            
+            iconSpan.innerHTML = `<i class="bi bi-${iconClass}"></i>`;
+        }
+        
+        // すべてのステップをリセットする関数
+        function resetProgressSteps() {
+            const steps = ['step-download', 'step-extraction', 'step-analysis', 'step-interaction'];
+            steps.forEach(stepId => {
+                updateProgressStep(stepId, 'pending');
+            });
+            
+            // 抽出結果プレビューをクリアして非表示
+            const preview = document.getElementById('extraction-preview');
+            preview.style.display = 'none';
+            preview.innerHTML = '';
+        }
+        
+        // 文書の処理状態を更新する関数
+        function updateDocumentStatus(index, status, message) {
+            const docStatus = document.getElementById(`doc-status-${index}`);
+            if (!docStatus) return;
+            
+            let iconClass = 'bi-hourglass';
+            switch (status) {
+                case 'processing':
+                    iconClass = 'bi-arrow-repeat';
+                    break;
+                case 'success':
+                    iconClass = 'bi-check-circle-fill';
+                    break;
+                case 'error':
+                    iconClass = 'bi-x-circle-fill';
+                    break;
+            }
+            
+            const icon = docStatus.querySelector('.doc-status-icon');
+            icon.innerHTML = `<i class="bi ${iconClass}"></i>`;
+            
+            const statusText = docStatus.querySelector('.doc-status-text');
+            statusText.textContent = message || '';
+            
+            if (status === 'processing') {
+                icon.innerHTML = `<i class="bi ${iconClass}" style="animation: spin 1s linear infinite;"></i>`;
+            }
+        }
+        
+        // 抽出結果プレビューを表示する関数
+        function showExtractionPreview(content, isError = false) {
+            const preview = document.getElementById('extraction-preview');
+            preview.style.display = 'block';
+            preview.innerHTML = isError ? 
+                `<div class="text-danger">${content}</div>` : 
+                marked.parse(content);
+        }
+        
+        // 処理ステップをシミュレートする関数
+        function simulateProcessingSteps(data, urls) {
+            const totalDocs = urls.length;
+            
+            // 1. PDFダウンロードのシミュレーション
+            setTimeout(() => {
+                for (let i = 0; i < totalDocs; i++) {
+                    setTimeout(() => {
+                        updateDocumentStatus(i, 'processing', 'ダウンロード中...');
+                    }, i * 1000);
+                    
+                    setTimeout(() => {
+                        updateDocumentStatus(i, 'success', 'ダウンロード完了');
+                    }, i * 1000 + 1500);
+                }
+                
+                // すべてのPDFがダウンロードされた後
+                setTimeout(() => {
+                    updateProgressStep('step-download', 'complete');
+                    updateProgressStep('step-extraction', 'active');
+                    
+                    // 2. テキスト抽出のシミュレーション
+                    for (let i = 0; i < totalDocs; i++) {
+                        setTimeout(() => {
+                            updateDocumentStatus(i, 'processing', 'テキスト抽出中...');
+                        }, i * 1200);
+                        
+                        setTimeout(() => {
+                            updateDocumentStatus(i, 'success', 'テキスト抽出完了');
+                            if (i === 0) {
+                                showExtractionPreview(`## テキスト抽出結果（サンプル）\n\n**${getFileNameFromUrl(urls[i])}**から抽出された主要項目:\n\n- 薬剤名・一般名\n- 効能・効果\n- 用法・用量\n- 禁忌事項\n- 相互作用\n\n*実際の抽出データを処理中...*`);
+                            }
+                        }, i * 1200 + 2000);
+                    }
+                    
+                    // すべてのPDFからテキストが抽出された後
+                    setTimeout(() => {
+                        updateProgressStep('step-extraction', 'complete');
+                        updateProgressStep('step-analysis', 'active');
+                        
+                        // 3. 情報構造化のシミュレーション
+                        showExtractionPreview(`## 情報構造化中\n\n添付文書から以下の情報を抽出しています：\n\n- 基本情報（薬剤名、製造販売元など）\n- 効能・効果\n- 用法・用量\n- **禁忌となる患者状態**\n- **併用禁忌・併用注意薬剤**\n- 特定患者への注意事項\n- 副作用情報\n\n*情報の構造化を進めています...*`);
+                        
+                        setTimeout(() => {
+                            updateProgressStep('step-analysis', 'complete');
+                            updateProgressStep('step-interaction', 'active');
+                            
+                            // 4. 相互作用分析のシミュレーション
+                            showExtractionPreview(`## 薬剤相互作用分析中\n\n抽出した情報に基づいて、以下の分析を行っています：\n\n1. 薬剤間の併用禁忌の有無\n2. 併用注意が必要な組み合わせの特定\n3. **患者情報に基づくリスク評価**\n4. 総合的な安全性判断\n\n*分析結果を生成中です...*`);
+                            
+                            // 5. 患者への投与適合性評価のシミュレーション
+                            setTimeout(() => {
+                                showExtractionPreview(`## 患者投与適合性評価中\n\n各薬剤について患者への適合性を評価しています：\n\n1. **患者の状態（年齢、性別、疾患）に対する薬剤の適合性**\n2. 禁忌・慎重投与条件の確認\n3. 用量の適切性評価\n\n*評価結果を生成中です...*`);
+                            }, 6000);
+                        }, 3000);
+                    }, totalDocs * 1200 + 3000);
+                }, totalDocs * 1000 + 2000);
+            }, 1000);
+        }
+        
+        // API呼び出し関数の修正
+        async function analyzePDFs(urls, patientInfo) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/analyze-pdfs`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        urls: urls,
+                        patient_info: patientInfo
+                    })
+                });
+                if (!response.ok) {
+                    throw new Error(`APIリクエストに失敗しました: ${response.status} ${response.statusText}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Error:', error);
+                showError('APIリクエスト中にエラーが発生しました: ' + error.message);
+            }
+        }
+        
+        // フォローアップ質問関数の修正
+        async function askFollowupQuestion(questionText, conversationId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/ask-followup`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        conversation_id: conversationId,
+                        question: questionText
+                    })
+                });
+                if (!response.ok) {
+                    throw new Error(`APIリクエストに失敗しました: ${response.status} ${response.statusText}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Error:', error);
+                showError('質問送信中にエラーが発生しました: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html> 

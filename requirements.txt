@@ -1,0 +1,11 @@
+# 薬剤併用禁忌チェックシステム 必要パッケージ
+fastapi==0.104.1
+uvicorn==0.23.2
+anthropic==0.8.1
+pypdf==3.17.1
+python-multipart==0.0.6
+requests==2.31.0
+markdown==3.5
+pydantic==2.4.2
+python-dotenv==1.0.0
+markitdown==0.1.0 
